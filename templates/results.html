@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ query }} - WittySearch</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="top-bar">
+        <a href="/" style="text-decoration: none;">
+            <h2 class="logo-small">
+                <span class="blue">W</span><span class="red">i</span><span class="yellow">t</span><span class="blue">t</span><span class="green">y</span>
+            </h2>
+        </a>
+        <form action="/search" method="GET" class="search-form-small">
+            <input type="text" name="q" value="{{ query }}" class="search-box-small">
+            <input type="hidden" name="limit" value="{{ limit }}">
+            <button type="submit" class="search-btn-small">🔍</button>
+        </form>
+    </div>
+    <hr>
+    
+    <div class="results-container">
+        
+        {% if total_results > 0 %}
+        <div class="pagination-controls">
+            <form action="/search" method="GET" class="limit-form">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="page" value="1">
+                <label for="limitTop">Results per page:</label>
+                <select name="limit" id="limitTop" onchange="this.form.submit()">
+                    <option value="10" {% if limit == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if limit == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+                </select>
+            </form>
+            <div class="page-nav">
+                {% if page > 1 %}
+                <a href="/search?q={{ query }}&limit={{ limit }}&page={{ page - 1 }}" class="page-btn">« Prev</a>
+                {% endif %}
+                <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}
+                <a href="/search?q={{ query }}&limit={{ limit }}&page={{ page + 1 }}" class="page-btn">Next »</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <p class="result-stats">About {{ total_results }} results found in your local files</p>
+        
+        {% for res in results %}
+        <div class="result-item">
+            
+            {% if res.is_video or res.is_image %}
+            <div class="result-media-thumb media-thumb" 
+                 onclick="openMediaModal('/file/{{ res.rel_path }}', '{{ res.type }}', '{% if res.is_video %}video{% else %}image{% endif %}')">
+                
+                {% if res.is_video %}
+                    <video class="media-preview-square" muted preload="metadata">
+                        <source src="/file/{{ res.rel_path }}#t=0.1" type="video/{{ res.type }}">
+                    </video>
+                    <div class="play-overlay">&#9658;</div>
+                {% elif res.is_image %}
+                    <img src="/file/{{ res.rel_path }}" alt="{{ res.title }}" class="media-preview-square">
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="result-content">
+                
+                <div class="result-cite">
+                    {% if res.is_html %}
+                        {% if res.favicon_path %}
+                            {% if res.favicon_path.startswith('http') %}
+                                <img src="{{ res.favicon_path }}" class="site-favicon" alt="Site Favicon">
+                            {% else %}
+                                <img src="/file/{{ res.favicon_path }}" class="site-favicon" alt="Site Favicon">
+                            {% endif %}
+                        {% else %}
+                            <div class="site-favicon empty-favicon-container">
+                                <svg focusable="false" viewBox="0 0 24 24">
+                                    <path fill="#70757a" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"></path>
+                                </svg>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <span class="short-path">{{ res.directory }} <span class="breadcrumb-arrow">›</span> {{ res.title }}</span>
+                    <button class="expand-path-btn" onclick="togglePath(this)" title="Toggle full path">▼</button>
+                </div>
+                
+                <div class="full-path-box" style="display: none;">
+                    <strong>Full Directory Path:</strong><br>
+                    {{ res.directory }}\{{ res.title }}
+                </div>
+                
+                <div class="title-row">
+                    <a href="/file/{{ res.rel_path }}" class="result-title" 
+                       {% if res.type in ['html', 'htm', 'css', 'js', 'pdf', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] %}target="_blank"{% endif %}>
+                        <h3>{{ res.title }}</h3>
+                    </a>
+                </div>
+                
+                <div class="result-meta">
+                    <span class="badge">{{ res.type|upper }}</span> 
+                    <span class="badge">{{ res.full_name }}</span> 
+                    <span class="badge badge-secondary">{{ res.category }}</span>
+                    <span class="meta-divider">•</span> {{ res.date }} 
+                    <span class="meta-divider">•</span> {{ res.size }}
+                </div>
+
+                <div class="action-row">
+                    <a href="/open_dir?path={{ res.rel_dir }}" class="folder-btn" title="Open folder in OS" onclick="fetch(this.href); return false;">
+                        📁 Open in OS File Manager
+                    </a>
+                </div>
+                
+                <p class="result-snippet">
+                    {% if res.snippet %}
+                        {{ res.snippet }}
+                    {% else %}
+                        No text preview available.
+                    {% endif %}
+                </p>
+            </div>
+            
+        </div>
+        {% else %}
+        <div class="no-results">
+            <p>Your search - <b>{{ query }}</b> - did not match any documents.</p>
+            <p>Suggestions:</p>
+            <ul>
+                <li>Make sure all words are spelled correctly.</li>
+                <li>Try different keywords.</li>
+                <li>Try removing the <i>filetype:</i> modifier if you used one.</li>
+            </ul>
+        </div>
+        {% endfor %}
+
+        {% if total_results > 0 %}
+        <div class="pagination-controls bottom">
+            <form action="/search" method="GET" class="limit-form">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="page" value="1">
+                <label for="limitBottom">Results per page:</label>
+                <select name="limit" id="limitBottom" onchange="this.form.submit()">
+                    <option value="10" {% if limit == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if limit == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+                </select>
+            </form>
+            <div class="page-nav">
+                {% if page > 1 %}
+                <a href="/search?q={{ query }}&limit={{ limit }}&page={{ page - 1 }}" class="page-btn">« Prev</a>
+                {% endif %}
+                <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}
+                <a href="/search?q={{ query }}&limit={{ limit }}&page={{ page + 1 }}" class="page-btn">Next »</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <div id="mediaModal" class="modal-overlay" onclick="closeMediaModal(event)">
+        <span class="close-modal" onclick="closeMediaModal(event)">&times;</span>
+        
+        <div class="modal-content">
+            <video id="modalVideo" controls style="display: none;">
+                Your browser does not support the video tag.
+            </video>
+            <img id="modalImage" src="" alt="Media Preview" style="display: none;">
+        </div>
+    </div>
+
+    <script>
+        function togglePath(btn) {
+            const pathBox = btn.parentElement.nextElementSibling;
+            if (pathBox.style.display === 'none') {
+                pathBox.style.display = 'block';
+                btn.innerHTML = '▲';
+            } else {
+                pathBox.style.display = 'none';
+                btn.innerHTML = '▼';
+            }
+        }
+
+        // Unified Modal Function for both Images and Video
+        function openMediaModal(src, type, mediaClass) {
+            const modal = document.getElementById('mediaModal');
+            const video = document.getElementById('modalVideo');
+            const img = document.getElementById('modalImage');
+            
+            if (mediaClass === 'video') {
+                img.style.display = 'none';
+                img.src = '';
+                
+                video.style.display = 'block';
+                video.innerHTML = ''; // Clear existing
+                const source = document.createElement('source');
+                source.src = src;
+                source.type = 'video/' + type;
+                video.appendChild(source);
+                
+                modal.style.display = 'flex';
+                video.load();
+                video.play();
+            } else if (mediaClass === 'image') {
+                video.style.display = 'none';
+                video.pause();
+                video.innerHTML = '';
+                video.load();
+                
+                img.style.display = 'block';
+                img.src = src;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeMediaModal(event) {
+            // Close if clicking the dark background or the X button specifically
+            if(event.target.id === 'mediaModal' || event.target.className === 'close-modal') {
+                const modal = document.getElementById('mediaModal');
+                const video = document.getElementById('modalVideo');
+                const img = document.getElementById('modalImage');
+                
+                video.pause();
+                video.innerHTML = ''; 
+                video.load(); 
+                img.src = '';
+                
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

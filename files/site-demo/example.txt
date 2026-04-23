@@ -1,0 +1,5 @@
+WittySearch Demo File
+----------------------
+This is the example file content. 
+If this were the real WittySearch app, the Python backend would be 
+reading this text to generate the search snippet you saw on the previous page!

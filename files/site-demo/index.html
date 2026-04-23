@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WittySearch Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="home-view" class="home-body">
+        
+        <div class="top-right-nav">
+            <a href="https://wittywilla.xyz/projects.html" target="_blank" class="purple-btn">
+                Visit WittyWilla's Project Server
+            </a>
+            <a href="https://github.com/wittywilla/wittysearch" target="_blank" class="github-btn">
+                <img src="github.svg" alt="GitHub" class="github-icon"> 
+                <span class="github-text">Visit This Project's Github</span>
+            </a>
+        </div>
+
+        <div class="center-container">
+            <h1 class="logo">
+                <span class="blue">W</span><span class="red">i</span><span class="yellow">t</span><span class="blue">t</span><span class="green">y</span><span class="red">Search</span><span class="demo-tag">Demo</span>
+            </h1>
+            <div class="search-container-home">
+                <input type="text" id="searchInput" class="search-box" autofocus placeholder="Search files (e.g., 'taxes filetype:pdf')">
+                <div class="btn-group">
+                    <button type="button" class="search-btn" onclick="initSearch('searchInput')">Witty Search</button>
+                    <button type="button" class="search-btn">I'm Feeling Lucky</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-view" style="display: none;">
+        <div class="top-bar">
+            <a href="#" onclick="location.reload()" style="text-decoration: none;">
+                <h2 class="logo-small">
+                    <span class="blue">W</span><span class="red">i</span><span class="yellow">t</span><span class="blue">t</span><span class="green">y</span>
+                </h2>
+            </a>
+            <div class="search-form-small">
+                <div class="search-input-wrapper">
+                    <input type="text" id="miniSearchInput" class="search-box-small">
+                    <button type="button" class="search-btn-small" onclick="initSearch('miniSearchInput')">🔍</button>
+                </div>
+            </div>
+            
+            <div class="top-bar-actions">
+                <a href="https://wittywilla.xyz/projects.html" target="_blank" class="purple-btn">
+                    Visit WittyWilla's Project Server
+                </a>
+                <a href="https://github.com/wittywilla/wittysearch" target="_blank" class="github-btn">
+                    <img src="github.svg" alt="GitHub" class="github-icon"> 
+                    <span class="github-text">Visit This Project's Github</span>
+                </a>
+            </div>
+        </div>
+        <hr>
+
+        <div class="results-container">
+            <div id="pagination-top"></div>
+            <p class="result-stats" id="stats-text"></p>
+            <div id="results-list"></div>
+            <div id="pagination-bottom"></div>
+        </div>
+    </div>
+
+    <div id="mediaModal" class="modal-overlay" onclick="closeMediaModal(event)">
+        <span class="close-modal" onclick="closeMediaModal(event)">&times;</span>
+        <div class="modal-content">
+            <video id="modalVideo" controls style="display: none;">
+                Your browser does not support the video tag.
+            </video>
+            <img id="modalImage" src="" alt="Media Preview" style="display: none;">
+        </div>
+    </div>
+
+    <script>
+        const extensions = [
+            {ext: 'html', type: 'Hypertext Markup Language', cat: 'Webpage'},
+            {ext: 'css', type: 'Cascading Style Sheets', cat: 'Stylesheet'},
+            {ext: 'js', type: 'JavaScript', cat: 'Script'},
+            {ext: 'ts', type: 'TypeScript', cat: 'Script'},
+            {ext: 'jsx', type: 'React JavaScript', cat: 'Script'},
+            {ext: 'php', type: 'PHP Script', cat: 'Script'},
+            {ext: 'py', type: 'Python Script', cat: 'Script'},
+            {ext: 'java', type: 'Java Source Code', cat: 'Source Code'},
+            {ext: 'cpp', type: 'C++ Source Code', cat: 'Source Code'},
+            {ext: 'cs', type: 'C# Source Code', cat: 'Source Code'},
+            {ext: 'sql', type: 'SQL Database Query', cat: 'Database'},
+            {ext: 'sqlite', type: 'SQLite Database', cat: 'Database'},
+            {ext: 'txt', type: 'Plain Text', cat: 'Document'},
+            {ext: 'md', type: 'Markdown', cat: 'Document'},
+            {ext: 'pdf', type: 'Portable Document Format', cat: 'Document'},
+            {ext: 'docx', type: 'Word Document', cat: 'Document'},
+            {ext: 'xlsx', type: 'Excel Spreadsheet', cat: 'Spreadsheet'},
+            {ext: 'csv', type: 'Comma-Separated Values', cat: 'Spreadsheet'},
+            {ext: 'pptx', type: 'PowerPoint Presentation', cat: 'Presentation'},
+            {ext: 'jpg', type: 'JPEG Image', cat: 'Image File', isMedia: 'image'},
+            {ext: 'png', type: 'Portable Network Graphics', cat: 'Image File', isMedia: 'image'},
+            {ext: 'gif', type: 'Graphics Interchange Format', cat: 'Image File', isMedia: 'image'},
+            {ext: 'svg', type: 'Scalable Vector Graphics', cat: 'Image File', isMedia: 'image'},
+            {ext: 'webp', type: 'WebP Image', cat: 'Image File', isMedia: 'image'},
+            {ext: 'psd', type: 'Photoshop Document', cat: 'Image File', isMedia: 'image'},
+            {ext: 'mp4', type: 'MPEG-4 Video', cat: 'Video File', isMedia: 'video'},
+            {ext: 'mkv', type: 'Matroska Video', cat: 'Video File', isMedia: 'video'},
+            {ext: 'mov', type: 'QuickTime Movie', cat: 'Video File', isMedia: 'video'},
+            {ext: 'avi', type: 'Audio Video Interleave', cat: 'Video File', isMedia: 'video'},
+            {ext: 'webm', type: 'WebM Video', cat: 'Video File', isMedia: 'video'},
+            {ext: 'mp3', type: 'MP3 Audio', cat: 'Audio File'},
+            {ext: 'wav', type: 'WAVE Audio', cat: 'Audio File'},
+            {ext: 'flac', type: 'Free Lossless Audio Codec', cat: 'Audio File'},
+            {ext: 'zip', type: 'ZIP Archive', cat: 'Archive File'},
+            {ext: 'rar', type: 'RAR Archive', cat: 'Archive File'},
+            {ext: '7z', type: '7-Zip Archive', cat: 'Archive File'},
+            {ext: 'json', type: 'JSON Data', cat: 'Data File'},
+            {ext: 'xml', type: 'XML Data', cat: 'Data File'},
+            {ext: 'yaml', type: 'YAML Data', cat: 'Data File'},
+            {ext: 'log', type: 'Log File', cat: 'Data File'},
+            {ext: 'exe', type: 'Windows Executable', cat: 'Application'},
+            {ext: 'dll', type: 'Dynamic Link Library', cat: 'System File'},
+            {ext: 'bat', type: 'Batch File', cat: 'Script'},
+            {ext: 'apk', type: 'Android Package', cat: 'Application'}
+        ];
+
+        const imageFiles = ['image.png', 'photo2.png', 'photo3.png'];
+        const videoFiles = ['video.mp4', 'video2.mp4'];
+
+        let allResults = [];
+        let currentQuery = '';
+        let currentPage = 1;
+        let limit = 10;
+
+        function initSearch(inputId) {
+            const query = document.getElementById(inputId).value.trim();
+            if (!query) return;
+
+            currentQuery = query;
+            currentPage = 1;
+
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('results-view').style.display = 'block';
+            document.getElementById('miniSearchInput').value = query;
+
+            allResults = [];
+            
+            const mediaExtensions = extensions.filter(e => e.isMedia);
+            const docExtensions = extensions.filter(e => !e.isMedia);
+
+            for (let i = 1; i <= 50; i++) {
+                let item;
+                
+                if (Math.random() > 0.5) {
+                    item = mediaExtensions[Math.floor(Math.random() * mediaExtensions.length)];
+                } else {
+                    item = docExtensions[Math.floor(Math.random() * docExtensions.length)];
+                }
+                
+                let fileName = `${query}.${item.ext}`;
+                if (i > 1) {
+                    const modifiers = [
+                        `_archive_0${i}`,
+                        `_final_v2`,
+                        ` - Copy`,
+                        ` - Copy (2)`,
+                        `_draft`,
+                        `_backup_2026`,
+                        ` (${i})`,
+                        `_scanned_doc`,
+                        `_notes`,
+                        `_export_${Math.floor(Math.random() * 9999)}`,
+                        `_confidential`,
+                        `_revised`,
+                        `_OLD`
+                    ];
+                    const randomMod = modifiers[Math.floor(Math.random() * modifiers.length)];
+                    fileName = `${query}${randomMod}.${item.ext}`;
+                }
+
+                const fileSize = (Math.random() * 500).toFixed(1);
+                
+                let mediaSrc = '';
+                if (item.isMedia === 'image') {
+                    mediaSrc = imageFiles[Math.floor(Math.random() * imageFiles.length)];
+                } else if (item.isMedia === 'video') {
+                    mediaSrc = videoFiles[Math.floor(Math.random() * videoFiles.length)];
+                }
+
+                allResults.push({ id: i, item, fileName, fileSize, mediaSrc });
+            }
+
+            renderResults();
+        }
+
+        function renderResults() {
+            const totalResults = allResults.length;
+            const totalPages = Math.ceil(totalResults / limit);
+            
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * limit;
+            const endIdx = startIdx + limit;
+            const paginatedResults = allResults.slice(startIdx, endIdx);
+
+            document.getElementById('stats-text').innerText = `About ${totalResults} results found in your local files`;
+
+            let htmlContent = '';
+            paginatedResults.forEach(res => {
+                let fileLink = 'example.txt';
+                if (res.item.isMedia) {
+                    fileLink = res.mediaSrc; 
+                }
+
+                htmlContent += `
+                <div class="result-item">
+                    ${res.item.isMedia ? `
+                    <div class="result-media-thumb media-thumb" onclick="openMediaModal('${fileLink}', '${res.item.ext}', '${res.item.isMedia}')">
+                        ${res.item.isMedia === 'video' ? 
+                            /* FIX: Hardcoded type="video/mp4" to ensure local dummy files load regardless of fake extension */
+                            `<video class="media-preview-square" muted preload="metadata"><source src="${fileLink}#t=0.1" type="video/mp4"></video><div class="play-overlay">&#9658;</div>` : 
+                            `<img src="${fileLink}" class="media-preview-square">`}
+                    </div>` : ''}
+                    
+                    <div class="result-content">
+                        <div class="result-cite">
+                            <span class="short-path">Documents <span class="breadcrumb-arrow">›</span> Project_${res.id} <span class="breadcrumb-arrow">›</span> ${res.fileName}</span>
+                        </div>
+                        <div class="title-row">
+                            <a href="${fileLink}" class="result-title" target="_blank">
+                                <h3>${res.fileName}</h3>
+                            </a>
+                        </div>
+                        <div class="result-meta">
+                            <span class="badge">${res.item.ext.toUpperCase()}</span> 
+                            <span class="badge">${res.item.type}</span> 
+                            <span class="badge badge-secondary">${res.item.cat}</span>
+                            <span class="meta-divider">•</span> 4/23/2026 
+                            <span class="meta-divider">•</span> ${res.fileSize} KB
+                        </div>
+                        <div class="action-row">
+                            <div class="folder-btn" onclick="alert('OS File Manager integration requires the local Python backend.')">📁 Open in OS File Manager</div>
+                        </div>
+                        <p class="result-snippet">Example File: This is a dummy snippet generated for the search term "${currentQuery}". In the full version of WittySearch, this area would show real content from the file indexed by the Python backend.</p>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('results-list').innerHTML = htmlContent;
+
+            const paginationHTML = `
+                <div class="pagination-controls">
+                    <div class="limit-form">
+                        <label>Results per page:</label>
+                        <select onchange="updateLimit(this.value)">
+                            <option value="10" ${limit === 10 ? 'selected' : ''}>10</option>
+                            <option value="25" ${limit === 25 ? 'selected' : ''}>25</option>
+                            <option value="50" ${limit === 50 ? 'selected' : ''}>50</option>
+                            <option value="100" ${limit === 100 ? 'selected' : ''}>100</option>
+                        </select>
+                    </div>
+                    <div class="page-nav">
+                        ${currentPage > 1 ? `<a href="#" onclick="changePage(-1); return false;" class="page-btn">« Prev</a>` : ''}
+                        <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+                        ${currentPage < totalPages ? `<a href="#" onclick="changePage(1); return false;" class="page-btn">Next »</a>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('pagination-top').innerHTML = paginationHTML;
+            document.getElementById('pagination-bottom').innerHTML = paginationHTML;
+            document.getElementById('pagination-bottom').firstElementChild.classList.add('bottom');
+            
+            window.scrollTo(0,0);
+        }
+
+        function updateLimit(newLimit) {
+            limit = parseInt(newLimit);
+            currentPage = 1;
+            renderResults();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            renderResults();
+        }
+
+        function openMediaModal(src, type, mediaClass) {
+            const modal = document.getElementById('mediaModal');
+            const video = document.getElementById('modalVideo');
+            const img = document.getElementById('modalImage');
+            
+            if (mediaClass === 'video') {
+                img.style.display = 'none';
+                img.src = '';
+                
+                video.style.display = 'block';
+                video.innerHTML = ''; 
+                const source = document.createElement('source');
+                source.src = src;
+                
+                // FIX: Hardcode type here as well to guarantee playback of the dummy MP4
+                source.type = 'video/mp4'; 
+                
+                video.appendChild(source);
+                modal.style.display = 'flex';
+                video.load();
+                video.play();
+            } else if (mediaClass === 'image') {
+                video.style.display = 'none';
+                video.pause();
+                video.innerHTML = '';
+                video.load();
+                
+                img.style.display = 'block';
+                img.src = src;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeMediaModal(event) {
+            if(event.target.id === 'mediaModal' || event.target.className === 'close-modal') {
+                const modal = document.getElementById('mediaModal');
+                const video = document.getElementById('modalVideo');
+                const img = document.getElementById('modalImage');
+                
+                video.pause();
+                video.innerHTML = ''; 
+                video.load(); 
+                img.src = '';
+                
+                modal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key === 'Enter') initSearch('searchInput'); });
+        document.getElementById('miniSearchInput').addEventListener('keypress', e => { if(e.key === 'Enter') initSearch('miniSearchInput'); });
+    </script>
+</body>
+</html>
