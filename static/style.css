@@ -2,6 +2,30 @@
 body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #202124; }
 .blue { color: #4285F4; } .red { color: #EA4335; } .yellow { color: #FBBC05; } .green { color: #34A853; }
 
+/* Top Navigation Buttons (Merged from Demo) */
+.top-right-nav { position: absolute; top: 25px; right: 30px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.top-bar-actions { margin-left: auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+.github-btn { 
+    display: inline-flex; align-items: center; justify-content: center; background-color: #1f2328; color: #ffffff; 
+    text-decoration: none; padding: 0 16px; height: 42px; box-sizing: border-box; border-radius: 6px; font-size: 15px; 
+    font-weight: 500; transition: background-color 0.2s, opacity 0.2s;
+}
+.github-btn:hover { background-color: #000000; opacity: 0.9; }
+.github-icon { 
+    width: 22px; height: 22px; margin-right: 8px; 
+    filter: brightness(0) invert(1); 
+}
+.github-text:hover { text-decoration: underline; }
+
+.purple-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    background-color: #673ab7; color: #ffffff; text-decoration: none;
+    padding: 0 18px; height: 42px; box-sizing: border-box; border-radius: 6px; font-size: 15px; font-weight: 500;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+.purple-btn:hover { background-color: #512da8; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
 /* Homepage */
 .home-body { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 0 20px; box-sizing: border-box; }
 .center-container { text-align: center; width: 100%; max-width: 584px; }
@@ -162,7 +186,7 @@ hr { border: 0; height: 1px; background: #ebebeb; margin: 0; }
     margin-top: 0; 
     margin-bottom: 0; 
     word-wrap: break-word; 
-    white-space: pre-wrap; 
+    white-space: normal; /* FIX: Changed from pre-wrap to collapse leading spaces */
     display: -webkit-box;
     -webkit-line-clamp: 4; 
     -webkit-box-orient: vertical;
@@ -257,4 +281,8 @@ hr { border: 0; height: 1px; background: #ebebeb; margin: 0; }
         right: 20px;
         font-size: 40px;
     }
+    
+    /* Responsive adjustment for the new top navigation buttons */
+    .top-right-nav { top: 15px; right: 15px; } 
+    .github-btn, .purple-btn { font-size: 13px; padding: 0 12px; height: 38px; }
 }
