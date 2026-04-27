@@ -134,31 +134,64 @@
         let limit = 10;
 
         function initSearch(inputId) {
-            const query = document.getElementById(inputId).value.trim();
-            if (!query) return;
+            let queryRaw = document.getElementById(inputId).value.trim();
+            if (!queryRaw) return;
 
-            currentQuery = query;
+            // 1. Extract filetype modifier (e.g., filetype:pdf or ext:png)
+            let requestedExt = null;
+            const filetypeMatch = queryRaw.match(/(?:filetype|ext):([a-zA-Z0-9]+)/i);
+            
+            let baseQuery = queryRaw;
+            if (filetypeMatch) {
+                requestedExt = filetypeMatch[1].toLowerCase();
+                // Remove the modifier from the base query so it isn't included in the dummy file names
+                baseQuery = queryRaw.replace(/(?:filetype|ext):[a-zA-Z0-9]+/i, '').trim();
+            }
+
+            // Fallback if the user *only* searched for a filetype without a keyword
+            if (!baseQuery) baseQuery = 'search_result';
+
+            currentQuery = baseQuery;
             currentPage = 1;
 
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('results-view').style.display = 'block';
-            document.getElementById('miniSearchInput').value = query;
+            document.getElementById('miniSearchInput').value = queryRaw; // Keep the full query in the search box
 
             allResults = [];
             
-            const mediaExtensions = extensions.filter(e => e.isMedia);
-            const docExtensions = extensions.filter(e => !e.isMedia);
+            // 2. Filter available extensions based on the requested modifier
+            let validExtensions = extensions;
+            if (requestedExt) {
+                const filtered = extensions.filter(e => e.ext === requestedExt);
+                if (filtered.length > 0) {
+                    validExtensions = filtered;
+                } else {
+                    // Fallback: Create a custom extension object if they search for an unknown format
+                    validExtensions = [{ ext: requestedExt, type: requestedExt.toUpperCase() + ' File', cat: 'Document' }];
+                }
+            }
+
+            const mediaExtensions = validExtensions.filter(e => e.isMedia);
+            const docExtensions = validExtensions.filter(e => !e.isMedia);
 
             for (let i = 1; i <= 50; i++) {
                 let item;
                 
-                if (Math.random() > 0.5) {
+                // 3. Select random extension safely depending on what arrays are left after filtering
+                if (mediaExtensions.length > 0 && docExtensions.length > 0) {
+                    if (Math.random() > 0.5) {
+                        item = mediaExtensions[Math.floor(Math.random() * mediaExtensions.length)];
+                    } else {
+                        item = docExtensions[Math.floor(Math.random() * docExtensions.length)];
+                    }
+                } else if (mediaExtensions.length > 0) {
                     item = mediaExtensions[Math.floor(Math.random() * mediaExtensions.length)];
                 } else {
                     item = docExtensions[Math.floor(Math.random() * docExtensions.length)];
                 }
                 
-                let fileName = `${query}.${item.ext}`;
+                let fileName = `${baseQuery}.${item.ext}`;
                 if (i > 1) {
                     const modifiers = [
                         `_archive_0${i}`,
@@ -176,7 +209,7 @@
                         `_OLD`
                     ];
                     const randomMod = modifiers[Math.floor(Math.random() * modifiers.length)];
-                    fileName = `${query}${randomMod}.${item.ext}`;
+                    fileName = `${baseQuery}${randomMod}.${item.ext}`;
                 }
 
                 const fileSize = (Math.random() * 500).toFixed(1);
