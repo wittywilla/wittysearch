@@ -1,0 +1,7 @@
+This file serves as a baseline test document to verify the core functionality of the WittySearch engine. When the indexer is operating correctly, this text should be clearly visible within the description field of your search results. WittySearch by default uses the /files/ directory the python file is started in. To change this, please reference the documentation page. 
+
+If this snippet fails to appear, the formatting is off and spacing is off, or if the search engine cannot parse it, there is a critical error in the indexing or retrieval pipeline. To troubleshoot, first try restarting your Python instance to clear any cached states. If the issue persists, perform a clean re-installation from the main repository at: https://github.com/wittywilla/wittysearch.
+
+
+License & Redistribution:
+WittySearch, including this specific test file, is open-source software licensed under the GNU General Public License v3.0 (GPL-3.0). If you clone, fork, or redistribute this software, you must leave this file intact within the files directory so that future users have a reliable method for testing their local instances.
