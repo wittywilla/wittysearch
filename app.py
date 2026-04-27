@@ -5,6 +5,7 @@ import platform
 import subprocess
 import json
 import math
+import PyPDF2
 from flask import Flask, request, render_template, send_file, abort
 
 app = Flask(__name__)
@@ -107,7 +108,35 @@ def search_local_files(base_query, filetype):
                     match_found = True
                 
                 text_exts = ['txt', 'md', 'csv', 'html', 'htm', 'css', 'py', 'json', 'log', 'xml', 'js', 'ts', 'jsx', 'tsx', 'php', 'c', 'cpp', 'h', 'cs', 'java', 'sql', 'yaml', 'yml', 'ini', 'sh', 'bat']
-                if ext in text_exts:
+                
+                # --- PDF Parsing Logic ---
+                if ext == 'pdf':
+                    try:
+                        with open(filepath, 'rb') as f:
+                            reader = PyPDF2.PdfReader(f)
+                            content = ""
+                            # Limit reading to the first 5 pages to maintain search speed
+                            for i in range(min(5, len(reader.pages))):
+                                page = reader.pages[i]
+                                extracted = page.extract_text()
+                                if extracted:
+                                    content += extracted + "\n"
+
+                            if base_query and base_query in content.lower():
+                                match_found = True
+                                idx = content.lower().find(base_query)
+                                start = max(0, idx - 80)
+                                end = min(len(content), idx + 250)
+                                raw_snippet = content[start:end]
+                                clean_snippet = re.sub(r'\n{3,}', '\n\n', raw_snippet).strip()
+                                snippet = "..." + clean_snippet + "..."
+                            elif not snippet:
+                                snippet = content[:250].strip() + "..." 
+                    except Exception:
+                        pass # Silently skip encrypted or unreadable PDFs
+
+                # --- Plain Text Parsing Logic ---
+                elif ext in text_exts:
                     try:
                         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                             content = f.read()
