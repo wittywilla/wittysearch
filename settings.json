@@ -1,0 +1,15 @@
+{
+    "interface": {
+        "buttons": {
+            "optional": {
+                "wittywillaprojectserver": true,
+                "wittysearchgithub": true
+            }
+        }
+    },
+    "files": {
+        "directories": [
+            "files"
+        ]
+    }
+}
