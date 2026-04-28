@@ -5,15 +5,32 @@ import platform
 import subprocess
 import json
 import math
+
 import PyPDF2
 from flask import Flask, request, render_template, send_file, abort
 
 app = Flask(__name__)
 
+# --- GLOBAL CONSTANTS ---
+
 ALLOWED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'ico']
 ALLOWED_VIDEO_EXTS = ['mp4', 'mkv', 'mov', 'avi', 'wmv', 'flv', 'webm', 'm4v', '3gp']
 
+MIME_TYPES = {
+    'html': 'text/html', 'htm': 'text/html', 'css': 'text/css',
+    'js': 'application/javascript', 'json': 'application/json',
+    'txt': 'text/plain', 'md': 'text/markdown', 'pdf': 'application/pdf',
+    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+    'gif': 'image/gif', 'svg': 'image/svg+xml', 'webp': 'image/webp',
+    'bmp': 'image/bmp', 'ico': 'image/x-icon',
+    'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'mov': 'video/quicktime',
+    'avi': 'video/x-msvideo', 'wmv': 'video/x-ms-wmv', 'flv': 'video/x-flv',
+    'webm': 'video/webm', 'm4v': 'video/x-m4v', '3gp': 'video/3gpp',
+}
+
+
 def load_file_types():
+    """Loads the file types mapping from a local JSON file."""
     try:
         with open('filetypes.json', 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -21,16 +38,21 @@ def load_file_types():
         print(f"Warning: Could not load filetypes.json: {e}")
         return {}
 
+
 FILE_TYPES_MAP = load_file_types()
 
+
 def get_app_settings():
+    """Loads application settings from settings.json."""
     try:
         with open('settings.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception:
         return {}
 
+
 def is_feature_enabled(setting_path, default=True):
+    """Checks if a specific feature is enabled in settings.json using dot notation."""
     settings = get_app_settings()
     keys = setting_path.split('.')
     val = settings
@@ -41,13 +63,17 @@ def is_feature_enabled(setting_path, default=True):
             return default
     return val if isinstance(val, bool) else default
 
+
 def parse_query(query):
+    """Extracts explicit filetype parameters from the search query."""
     filetype_match = re.search(r'filetype:(\w+)', query, re.IGNORECASE)
     filetype = filetype_match.group(1).lower() if filetype_match else None
     base_query = re.sub(r'filetype:\w+', '', query, flags=re.IGNORECASE).strip().lower()
     return base_query, filetype
 
+
 def search_local_files(base_query, filetype):
+    """Scans defined directories to match query terms against file names and contents."""
     results = []
     
     # Read target directories from settings, fallback to a local 'files' folder
@@ -73,6 +99,7 @@ def search_local_files(base_query, filetype):
                 filepath = os.path.join(root, file)
                 ext = file.split('.')[-1].lower() if '.' in file else 'unknown'
                 
+                # Filter by filetype if requested
                 if filetype:
                     alias_groups = [
                         ['html', 'htm'], 
@@ -89,6 +116,7 @@ def search_local_files(base_query, filetype):
                     if ext not in valid_exts:
                         continue
                 
+                # Gather file metadata
                 stat = os.stat(filepath)
                 size_kb = stat.st_size / 1024
                 date_mod = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d')
@@ -100,10 +128,12 @@ def search_local_files(base_query, filetype):
                 is_image = ext in ALLOWED_IMAGE_EXTS
                 is_video = ext in ALLOWED_VIDEO_EXTS
                 is_html = ext in ['html', 'htm']
+                
                 match_found = False
                 snippet = ""
                 favicon_path = None
                 
+                # Basic filename matching
                 if base_query and base_query in file.lower():
                     match_found = True
                 
@@ -129,9 +159,9 @@ def search_local_files(base_query, filetype):
                                 end = min(len(content), idx + 250)
                                 raw_snippet = content[start:end]
                                 clean_snippet = re.sub(r'\n{3,}', '\n\n', raw_snippet).strip()
-                                snippet = "..." + clean_snippet + "..."
+                                snippet = f"...{clean_snippet}..."
                             elif not snippet:
-                                snippet = content[:250].strip() + "..." 
+                                snippet = f"{content[:250].strip()}..." 
                     except Exception:
                         pass # Silently skip encrypted or unreadable PDFs
 
@@ -169,12 +199,13 @@ def search_local_files(base_query, filetype):
                                 end = min(len(content), idx + 250)
                                 raw_snippet = content[start:end]
                                 clean_snippet = re.sub(r'\n{3,}', '\n\n', raw_snippet).strip()
-                                snippet = "..." + clean_snippet + "..."
+                                snippet = f"...{clean_snippet}..."
                             elif not snippet:
-                                snippet = content[:250].strip() + "..." 
+                                snippet = f"{content[:250].strip()}..." 
                     except Exception:
                         pass 
                 
+                # Catch-all for filetype queries without a base text query
                 if not base_query and filetype:
                     match_found = True
 
@@ -205,11 +236,15 @@ def search_local_files(base_query, filetype):
                     
     return results
 
+
+# --- FLASK ROUTES ---
+
 @app.route('/')
 def home():
     show_server = is_feature_enabled("interface.buttons.optional.wittywillaprojectserver", True)
     show_github = is_feature_enabled("interface.buttons.optional.wittysearchgithub", True)
     return render_template('index.html', show_server=show_server, show_github=show_github)
+
 
 @app.route('/search')
 def search():
@@ -233,8 +268,8 @@ def search():
     total_results = len(all_results)
     total_pages = math.ceil(total_results / limit) if total_results > 0 else 1
     
-    if page < 1: page = 1
-    if page > total_pages: page = total_pages
+    # Ensure page stays within bounds
+    page = max(1, min(page, total_pages))
     
     start_idx = (page - 1) * limit
     end_idx = start_idx + limit
@@ -254,6 +289,7 @@ def search():
         show_server=show_server,
         show_github=show_github
     )
+
 
 @app.route('/file/<path:filepath>')
 def serve_file(filepath):
@@ -281,22 +317,11 @@ def serve_file(filepath):
         
     ext = filepath.split('.')[-1].lower() if '.' in filepath else ''
     
-    mime_types = {
-        'html': 'text/html', 'htm': 'text/html', 'css': 'text/css',
-        'js': 'application/javascript', 'json': 'application/json',
-        'txt': 'text/plain', 'md': 'text/markdown', 'pdf': 'application/pdf',
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-        'gif': 'image/gif', 'svg': 'image/svg+xml', 'webp': 'image/webp',
-        'bmp': 'image/bmp', 'ico': 'image/x-icon',
-        'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'mov': 'video/quicktime',
-        'avi': 'video/x-msvideo', 'wmv': 'video/x-ms-wmv', 'flv': 'video/x-flv',
-        'webm': 'video/webm', 'm4v': 'video/x-m4v', '3gp': 'video/3gpp',
-    }
-    
-    if ext in mime_types:
-        return send_file(full_path, mimetype=mime_types[ext])
+    if ext in MIME_TYPES:
+        return send_file(full_path, mimetype=MIME_TYPES[ext])
     else:
         return send_file(full_path, as_attachment=True)
+
 
 @app.route('/open_dir')
 def open_dir():
@@ -335,5 +360,80 @@ def open_dir():
     except Exception as e:
         return str(e), 500
 
+
+# --- STARTUP AND LICENSE LOGIC ---
+
+def print_legal_header():
+    """Prints the non-blocking legal notice for logs/terminal."""
+    print("\n" + "="*70)
+    print("  WittySearch - app.py  Copyright (C) 2026")
+    print("  Wilhelmina \"Willow\" Poortenga (WittyWilla)")
+    print("-" * 70)
+    print("  This program is free software under the GPLv3 License.")
+    print("  It comes with ABSOLUTELY NO WARRANTY.")
+    print("="*70 + "\n")
+
+
+def check_license():
+    """Enforces GPLv3 license acceptance on startup."""
+    # 1. THE MANDATORY FILE CHECK (Must exist even if previously accepted)
+    if not os.path.exists('LICENSE.txt'):
+        print("\n" + "!"*70)
+        print("FATAL ERROR: Unable to launch program due to missing LICENSE.txt.")
+        print("-" * 70)
+        print("This is a GPLv3 licensed project, and it is required to have this")
+        print("license in the root directory in order to run. Removing or altering")
+        print("the LICENSE.txt file before or after launching the file will break")
+        print("GPLv3 if redistributing. Even in a non-redistributing environment,")
+        print("this program will always check for the file's existence.")
+        print("!"*70 + "\n")
+        os._exit(1) # Immediate hard exit
+
+    # 2. Skip interaction if this is the Flask reloader process
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        return
+
+    # 3. Check for previous acceptance
+    terms_file = "LICENSE_TERMS.txt"
+    if os.path.exists(terms_file):
+        with open(terms_file, 'r') as f:
+            if f.read().strip().lower() == "true":
+                print_legal_header()
+                print("License already accepted. Initializing WittySearch...")
+                return
+
+    # 4. Interactive prompt
+    print_legal_header()
+    print("NOTICE: Agreeing to these terms will create a 'LICENSE_TERMS.txt' file.")
+    print("This automates future launches by skipping this prompt.")
+    print("The legal header above will remain in your terminal logs.")
+    print("-" * 70)
+
+    while True:
+        choice = input("Accept license? [y]es / [n]o / [c]view full license: ").lower().strip()
+        
+        if choice == 'y':
+            with open(terms_file, 'w') as f:
+                f.write("true")
+            print("\nLicense accepted. Launching...\n")
+            break
+        elif choice == 'n':
+            with open(terms_file, 'w') as f:
+                f.write("false")
+            print("\nLicense declined. Application exiting.")
+            os._exit(1)
+        elif choice == 'c':
+            print("\n" + "~"*70)
+            with open('LICENSE.txt', 'r', encoding='utf-8') as f:
+                print(f.read())
+            print("~"*70 + "\n")
+        else:
+            print("Invalid input. Please enter 'y', 'n', or 'c'.")
+
+
 if __name__ == '__main__':
+    # Verify or prompt for license acceptance
+    check_license()
+    
+    # Start the Flask app
     app.run(debug=True, port=5000)
